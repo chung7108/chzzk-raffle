@@ -1,0 +1,63 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>치지직 추첨 대시보드</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--tx:#1a1d21;--mut:#6b7480;--ac:#0b8f63;--bd:#dde2e7;--dg:#d64545}
+@media(prefers-color-scheme:dark){:root{--bg:#14171a;--card:#1d2125;--tx:#eceff2;--mut:#9aa4af;--ac:#2fd49b;--bd:#2d333a;--dg:#ff7070}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 "Pretendard","Malgun Gothic",sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px}h1{font-size:18px;margin:0}
+.pill{padding:4px 12px;border-radius:99px;background:var(--bd);font-size:13px}.pill.on{background:var(--ac);color:#fff}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding:0 18px 18px}@media(max-width:760px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:14px}
+h2{font-size:14px;margin:0 0 10px;color:var(--mut)}
+input{width:100%;padding:9px 10px;margin:0 0 8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+button{padding:9px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.s{background:var(--bd);color:var(--tx)}button.d{background:var(--dg)}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+.big{font-size:44px;font-weight:800;color:var(--ac);line-height:1}
+#list{max-height:340px;overflow:auto;display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:3px 10px;border-radius:99px;background:var(--bg);border:1px solid var(--bd);font-size:13px}.chip.w{border-color:var(--ac);color:var(--ac)}
+#res{text-align:center}#rn{font-size:32px;font-weight:800;min-height:46px}
+#msg{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:99px;display:none}
+#login{position:fixed;inset:0;background:var(--bg);display:none;place-items:center}#login div{width:min(320px,90%)}
+.hide{display:none!important}
+</style></head><body>
+<header><h1>🎰 치지직 추첨 대시보드</h1><span><button id="cp" class="s" style="padding:4px 10px;font-size:13px">🔗 관리 링크 복사</button> <span id="pill" class="pill">연결 안 됨</span></span></header>
+<main><div>
+<div class="card"><h2>1. 시작</h2>
+<div class="row" style="margin-bottom:8px"><button id="t1">키워드 추첨</button><button id="t2" class="s">숫자 맞히기</button></div>
+<input id="ch" placeholder="치지직 채널 ID">
+<div id="f1"><input id="kw" placeholder="참가 키워드 (예: 참가)"></div>
+<div id="f2" class="row hide"><input id="mn" placeholder="최소 (1)"><input id="mx" placeholder="최대 (100)"></div>
+<div class="row"><button id="go">▶️ 시작</button><button id="stop" class="d">⏹ 종료</button></div></div>
+<div class="card"><h2>2. 진행</h2><div><span class="big" id="cnt">0</span> 명<div id="info" style="color:var(--mut)"></div></div>
+<div class="row" style="margin-top:10px"><button id="cl" class="s">🔒 마감</button><button id="op" class="s">🔓 열기</button><button id="rs" class="s">🧹 초기화</button></div></div>
+<div class="card"><h2>3. 추첨</h2><input id="ans" class="hide" placeholder="정답 숫자 (비우면 랜덤)">
+<div class="row"><input id="n" placeholder="인원 (1)"><button id="draw">🎰 추첨</button></div></div>
+</div><div>
+<div class="card" id="res"><h2>결과</h2><div id="rn">-</div><div id="rl"></div></div>
+<div class="card"><h2>참가자</h2><div id="list"></div></div>
+</div></main>
+<div id="msg"></div>
+<div id="login"><div><h2>🎰 치지직 추첨기</h2><p style="color:var(--mut)">방송 채팅의 키워드나 숫자로 시청자를 추첨해요. 방을 만들면 나만의 대시보드가 생겨요. (6시간 동안 쓰지 않으면 방이 사라져요)</p><button id="mk" style="width:100%">방 만들기</button></div></div>
+<script>
+var $=function(i){return document.getElementById(i)},room=(function(){try{var h=location.hash.slice(1).split('.');if(h.length===2&&h[0]&&h[1]){var o={id:h[0],key:h[1]};localStorage.setItem('room',JSON.stringify(o));return o}return JSON.parse(localStorage.getItem('room'))}catch(e){return null}})(),tab=1,S=null,seen,lm=null;
+function toast(t){var m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(function(){m.style.display='none'},2500)}
+function api(path,body){return fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json','X-Admin-Key':room.key},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(j){if(r.status===401||r.status===404){localStorage.removeItem('room');room=null;$('login').style.display='grid';throw new Error(j.error)}if(!r.ok)throw new Error(j.error||'오류');return j})})}
+function act(a,b){b=b||{};b.action=a;return api('/api/rooms/'+room.id+'/action',b).then(function(j){toast(j.msg);S=j.state;render()}).catch(function(e){toast('⚠️ '+e.message)})}
+function setTab(t){tab=t;$('f1').classList.toggle('hide',t!==1);$('f2').classList.toggle('hide',t!==2);$('ans').classList.toggle('hide',t!==2);$('draw').textContent=t===2?'🎯 정답공개':'🎰 추첨';$('t1').className=t===1?'':'s';$('t2').className=t===2?'':'s'}
+function fin(r){$('rn').textContent=r.type==='guess'?'🎯 정답 '+r.answer:'🎉 당첨!';var l=$('rl');l.textContent='';r.winners.forEach(function(w,i){var d=document.createElement('div');d.textContent=(['🥇','🥈','🥉'][i]||'🎁')+' '+(typeof w==='string'?w:w.nickname+' — '+w.guess+(w.diff===0?' 🎯 정확!':' (차이 '+w.diff+')'));l.appendChild(d)})}
+function anim(r){var names=S.list.map(function(p){return p.n}),t=0;$('rl').textContent='';(function tick(){if(t>=14||!names.length){fin(r);return}$('rn').textContent='🎰 '+names[Math.floor(Math.random()*names.length)];t++;setTimeout(tick,60+t*t*4)})()}
+function render(){if(!S)return;
+if(S.connected&&S.mode!==lm){lm=S.mode;setTab(lm==='guess'?2:1)}if(!S.connected)lm=null;
+$('pill').textContent=S.connected?(S.accepting?'접수 중':'마감'):'연결 안 됨';$('pill').className='pill'+(S.connected&&S.accepting?' on':'');
+$('cnt').textContent=S.count;$('info').textContent=S.connected?(S.mode==='guess'?'숫자 '+S.range.min+'~'+S.range.max:'키워드: '+S.keyword):'';
+if(!$('ch').value)$('ch').value=S.saved.channelId||'';if(!$('kw').value)$('kw').value=S.saved.keyword||'';
+var L=$('list');L.textContent='';S.list.forEach(function(p){var c=document.createElement('span');c.className='chip'+(p.w?' w':'');c.textContent=p.n+(p.g!==undefined?' ('+p.g+')':'');L.appendChild(c)});
+if(seen===undefined){seen=S.last?S.last.id:0;if(S.last)fin(S.last)}else if(S.last&&S.last.id!==seen){seen=S.last.id;anim(S.last)}}
+$('t1').onclick=function(){setTab(1)};$('t2').onclick=function(){setTab(2)};
+$('go').onclick=function(){var c=$('ch').value;tab===1?act('start',{channel:c,keyword:$('kw').value}):act('guess',{channel:c,min:$('mn').value,max:$('mx').value})};
+$('stop').onclick=function(){act('stop')};$('cl').onclick=function(){act('close')};$('op').onclick=function(){act('open')};$('rs').onclick=function(){act('reset')};
+$('draw').onclick=function(){tab===2?act('reveal',{answer:$('ans').value,n:$('n').value}):act('draw',{n:$('n').value})};
+$('mk').onclick=function(){fetch('/api/rooms',{method:'POST'}).then(function(r){return r.json()}).then(function(j){if(j.error){toast('⚠️ '+j.error);return}room=j;localStorage.setItem('room',JSON.stringify(j));history.replaceState(null,'','#'+j.id+'.'+j.key);$('login').style.display='none';poll()}).catch(function(){toast('⚠️ 서버에 연결하지 못했어요. 잠시 후 다시 시도하세요')})};
+$('cp').onclick=function(){if(room)navigator.clipboard.writeText(location.origin+'/#'+room.id+'.'+room.key).then(function(){toast('관리 링크를 복사했어요. 이 링크가 열쇠이니 비공개로 보관하세요')})};
+function poll(){if(!room){$('login').style.display='grid';return}if($('login').style.display==='grid')return;api('/api/rooms/'+room.id+'/state').then(function(s){S=s;render()}).catch(function(){})}poll();setInterval(poll,1500);
+</script></body></html>
